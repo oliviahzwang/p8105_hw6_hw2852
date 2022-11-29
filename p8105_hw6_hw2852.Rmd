@@ -1,0 +1,35 @@
+---
+title: "P8105 Data Science I Homework 6"
+author: Olivia Wang (hw2852)
+output: github_document
+date: "2022-12-03"
+---
+
+In preparation for the problems below, we will load the following libraries: 
+
+```{r load_libraries}
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(patchwork)
+```
+
+# Problem 1
+
+
+
+# Problem 2
+
+Let us begin by importing the CSV file containing _Washington Post's_ homicide data downloaded from GitHub, and applying the `clean_names` function. Next, we can create a new `city_state` variable (e.g. "Baltimore, MD") by joining the existing city and state variables using the `paste` command, and a new binary `homicide_solved` variable indicating whether a homicide is solved. The `victim_age` variable previously read as a character variable is transformed into a numeric variable. Finally, we filtered the data to exclude information from Dallas, TX, Phoenix, AZ, Kansas City, MD, and Tulsa, AL, and to only include victims whose reported race was White or Black. 
+
+```{r}
+homicide_data = 
+  read_csv("./homicide-data.csv") %>% 
+  janitor::clean_names() %>% 
+  mutate(city_state = as.character(paste(city, state, sep = ", ")), 
+         homicide_solved = ifelse(disposition == "Closed by arrest", 1, 0), 
+         victim_age = as.numeric(victim_age)) %>% 
+  filter(!(city_state %in% c("Dallas, TX", "Phoeniz, AZ", "Kansas City, MO", "Tulsa, AL")), 
+         victim_race %in% c("White", "Black"))
+```
+

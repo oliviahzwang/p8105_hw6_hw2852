@@ -20,10 +20,12 @@ library(patchwork)
 
 # Problem 2
 
+## 2.1 Homicide Data Import and Cleaning
+
 Let us begin by importing the CSV file containing _Washington Post's_ homicide data downloaded from GitHub, and applying the `clean_names` function. Next, we can create a new `city_state` variable (e.g. "Baltimore, MD") by joining the existing city and state variables using the `paste` command, and a new binary `homicide_solved` variable indicating whether a homicide is solved. The `victim_age` variable previously read as a character variable is transformed into a numeric variable. Finally, we filtered the data to exclude information from Dallas, TX, Phoenix, AZ, Kansas City, MD, and Tulsa, AL, and to only include victims whose reported race was White or Black. 
 
 ```{r}
-homicide_data = 
+homicide_data
   read_csv("./homicide-data.csv") %>% 
   janitor::clean_names() %>% 
   mutate(city_state = as.character(paste(city, state, sep = ", ")), 
@@ -32,4 +34,34 @@ homicide_data =
   filter(!(city_state %in% c("Dallas, TX", "Phoeniz, AZ", "Kansas City, MO", "Tulsa, AL")), 
          victim_race %in% c("White", "Black"))
 ```
+
+## 2.2 Homicide Data Analysis: Odds Ratios & 95% CIs
+
+#### _Solved Homicides Comparing Male & Female Victims in Baltimore, MD_
+
+```{r}
+homicide_data_df = homicide_data %>% 
+  filter(city_state == "Baltimore, MD")
+
+glm_homicide_baltimore = 
+  homicide_data_df %>% 
+  glm(homicide_solved ~ victim_age + victim_sex + victim_race, data = ., family = binomial())
+
+glm_homicide_baltimore %>%
+  broom::tidy() %>%
+  mutate(odds_ratio = exp(estimate)) %>% 
+  select(term, estimate, odds_ratio, p.value, starts_with("conf")) %>% 
+  knitr::kable(col.names = c('Term', 'Log_OR', 'OR', 'p-value'), digits = 3)
+
+glm_homicide_baltimore %>% 
+  confint() %>%
+  knitr::kable(col.names = c('Lower 95% CI Limit', 'Upper 95% CI Limit'), digits = 3) 
+```
+
+#### _Solved Homicides Comparing Male & Female Victims in All Cities_
+
+
+
+#### _Plotting City-Specific Solved Homicides Comparing Male & Female Victims_
+
 

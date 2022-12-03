@@ -11,6 +11,7 @@ In preparation for the problems below, we will load the following libraries:
 library(tidyverse)
 library(readxl)
 library(dplyr)
+library(modelr)
 ```
 
 # Problem 1
@@ -130,23 +131,77 @@ Based on the results from applying the `skim` function, there are no missing val
 According to the CDC, about 20% of babies born to mothers who smoke during their pregnancy are born with low birth weight (2020). Furthermore, existing literature has found increased maternal age to be a risk factor for low birth weight (Zheng et al., 2016). As such, we hypothesize that birth weight has an inverse linear relationship with the average number of cigarettes smoked per day during pregnancy (variable `smoken`) and maternal age (variable `momage`). Below, we fit this hypothesized model, and depict a plot of model residuals against fitted values using `add_residuals` and `add_predictions`. 
 
 ```{r}
-birthweight_fit = lm(bwt ~ momage + smoken, data = birthweight_data)
+birthweight_smoken_momage_fit = lm(bwt ~ momage + smoken, data = birthweight_data)
+
+birthweight_smoken_momage_fit %>% 
+  broom::tidy() %>% 
+  knitr::kable(col.names = c('Term', 'Estimate', 'Standard Error', 'Statistic', 'p-value'), digits = 3)
 
 birthweight_data_df = birthweight_data %>% 
-  mutate(modelr::add_residuals(birthweight_data, birthweight_fit), 
-         modelr::add_predictions(birthweight_data, birthweight_fit))
+  mutate(modelr::add_residuals(birthweight_data, birthweight_smoken_momage_fit), 
+         modelr::add_predictions(birthweight_data, birthweight_smoken_momage_fit))
 
 birthweight_data_df %>% 
   ggplot(aes(x = pred, y = resid)) +
   geom_point()
-
-birthweight_fit %>% 
-  broom::tidy() %>% 
-  knitr::kable(col.names = c('Term', 'Estimate', 'Standard Error', 'Statistic', 'p-value'), digits = 3)
 ```
 
-#### _Comparing Regression Models_
+#### _Fitting Comparison Models_
 
+In subsequent analysis, we will compare the hypothesized model described above with the following 2 models:
+
+(1) One using length at birth (`blength`) and gestational age (`gaweeks`) as predictors (main effects only); and
+(1) One using head circumference (`bhead`), length (`blength`), sex (`babysex`), and all interactions (including the three-way interaction) between these. 
+
+These two comparison models are fitted below in the following code. 
+
+```{r}
+birthweight_blength_gaweeks_fit = lm(bwt ~ blength + gaweeks, data = birthweight_data)
+
+birthweight_bhead_blength_sex_fit = lm(bwt ~ (bhead + blength + babysex)^4, data = birthweight_data)
+```
+
+#### _Comparing Regression Models: Cross-Validated Prediction Error_
+
+We can now perform a comparison between the three models in terms of cross-validated prediction error. To do this, we first create a cross-validation data frame `cv_df`. Contained within `cv_df` is 2 side-by-side list columns with the testing and training data split pairs, with a corresponding ID number to each pair. Since we are able to use resample objects directly into `lm` functions, we can skip the extra step of converting the testing and training data sets into tibbles. 
+
+Next, we apply the `map` function to map each regression model to the training data. We can then compute the root mean squared errors (RMSEs) for each model by applying the `map2_dbl` function to the testing data. 
+
+```{r}
+cv_df = 
+  crossv_mc(birthweight_data_df, 100)
+
+cv_df = cv_df %>% 
+  mutate(
+    smoke_momage_mod      = map(.x = train, ~lm(bwt ~ momage + smoken, data = .x)), 
+    blength_gaweeks_mod   = map(.x = train, ~lm(bwt ~ blength + gaweeks, data = .x)), 
+    bhead_blength_sex_mod = map(.x = train, ~lm(bwt ~ (bhead + blength + babysex)^4, data = .x))) %>% 
+  mutate(
+    rmse_smoke_momage      = map2_dbl(.x = smoke_momage_mod, .y = test, ~rmse(model = .x, data = .y)), 
+    rmse_blength_gaweeks   = map2_dbl(.x = blength_gaweeks_mod, .y = test, ~rmse(model = .x, data = .y)), 
+    rmse_bhead_blength_sex = map2_dbl(.x = bhead_blength_sex_mod, .y = test, ~rmse(model = .x, data = .y)))
+```
+
+Using the output from the code above, we can see which of the three models is the best fit for birth weight data. To do so, we can  
+
+```{r}
+cv_df %>% 
+  select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(), 
+    names_to = "model", 
+    values_to = "rmse", 
+    names_prefix = "rmse_") %>% 
+  ggplot(aes(x = model, y = rmse)) +
+  geom_violin() + 
+  labs(
+    title = "Root Mean Squared Errors Distribution for Fitted Birth Weight Models", 
+    x = "Fitted Model", 
+    y = "RMSE") +
+  scale_x_discrete(labels = c("bhead_blength_sex" = "Head Circ, Length, Sex Model", 
+                              "blength_gaweeks" = "Length, Gestational Age Model", 
+                              "smoke_momage" = "Smoke, Maternal Age Model"))
+```
 
 
 ## References

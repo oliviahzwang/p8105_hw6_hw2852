@@ -64,6 +64,28 @@ In Baltimore, MD, the odds ratio of solving homicides comparing male victims to 
 
 #### _Solved Homicides Comparing Male & Female Victims in All Cities_
 
+We will now apply the `glm` function to all cities in the data set. This process involves first creating a new `glm_homicide` function, which applies the `glm` function to selected inputs. We then use the `select` function to reorder the columns in the data frame to have `city_state` appear first, as the function will be mapped to each unique `city_state`. The city-level homicide data will then be nested using the `nest` function to generate list columns for city-level homicide counts, and the `glm_homicide` function will be mapped to each tibble using `purrr::map`. Finally, we apply the `unnest` function to generate the city-specific odds ratio and 95% CIs. 
+
+```{r}
+glm_homicide = function(homicide_data) {
+  glm(homicide_solved ~ victim_age + victim_sex + victim_race, data = homicide_data, family = binomial()) %>% 
+  broom::tidy() %>%
+  mutate(odds_ratio = exp(estimate), 
+         lower_CI = exp(estimate - 1.96*std.error), 
+         upper_CI = exp(estimate + 1.96*std.error)) %>%
+  select(term, odds_ratio, lower_CI, upper_CI) %>% 
+  filter(term == "victim_sexMale")
+}
+
+homicide_data_analysis = homicide_data %>% 
+  select(city_state, everything()) %>% 
+  nest(data = uid:homicide_solved) %>% 
+  mutate(glm_homicide_output = purrr::map(.x = data, ~ glm_homicide(.x))) %>% 
+  unnest(cols = glm_homicide_output)
+
+homicide_data_analysis
+```
+
 
 
 #### _Plotting City-Specific Solved Homicides Comparing Male & Female Victims_

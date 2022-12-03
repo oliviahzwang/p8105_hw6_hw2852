@@ -82,12 +82,48 @@ homicide_data_analysis = homicide_data %>%
   nest(data = uid:homicide_solved) %>% 
   mutate(glm_homicide_output = purrr::map(.x = data, ~ glm_homicide(.x))) %>% 
   unnest(cols = glm_homicide_output)
-
-homicide_data_analysis
 ```
 
-
-
 #### _Plotting City-Specific Solved Homicides Comparing Male & Female Victims_
+
+using the generated output from the analysis above, we will plot the city-level odds ratio estimates of unsolved homicides comparing male to female victims and corresponding 95% CIs using `ggplot`. In addition to plotting the OR estimates using `geom_point`, the 95% confidence intervals associated with each estimate were applied using `geom_errorbar`. Cities are ordered in increasing OR estimates of unsolved homicides, comparing male to female victims. 
+
+```{r}
+homicide_data_analysis %>% 
+  ggplot(aes(x = reorder(city_state, odds_ratio), y = odds_ratio, color = city_state)) + 
+  geom_point() +
+  geom_errorbar(aes(ymin = lower_CI, ymax = upper_CI)) +
+  labs(
+    title = "City-Level Odds Ratio Estimates and 95% CIs for Unsolved Homicides Comparing Male to Female Victims", 
+    x = "City, State", 
+    y = "Odds Ratio Estimate") + 
+  theme(
+    axis.text.x = element_text(angle = 70, hjust = 1), 
+    legend.position = "none")
+```
+
+# Problem 3 
+
+## 3.1 Birth Weight Data Import and Cleaning
+
+Let us begin by importing the CSV file containing birth weight data, and applying the `clean_names` function. The following variables were converted from numeric to factor variables to reflect the information in the codebook: `babysex`, `frace`, `malform`, and `mrace`. The `fincome` variable, denoting family monthly income, was also modified to reflect the actual reported amounts (i.e., hundreds). Finally, the `skim` function was applied to generate a summary of the variables in the data set. 
+
+```{r}
+birthweight_data = 
+  read_csv("./birthweight.csv") %>% 
+  janitor::clean_names() %>% 
+  mutate(babysex = factor(babysex, labels = c("Male", "Female")),
+         fincome = fincome * 100, 
+         frace = factor(frace, labels = c("White", "Black", "Asian", "Puerto Rican", "Other")),
+         malform = factor(malform, labels = c("Absent", "Present")),
+         mrace = factor(mrace, labels = c("White", "Black", "Asian", "Puerto Rican")))
+
+skimr::skim(birthweight_data)
+```
+
+Based on the results from applying the `skim` function, there are no missing values for any variable in the data set. 
+
+## 3.2 Birth Weight Data Analysis: Modeling Exercise
+
 
 

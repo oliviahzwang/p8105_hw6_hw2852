@@ -106,7 +106,7 @@ homicide_data_analysis %>%
 
 ## 3.1 Birth Weight Data Import and Cleaning
 
-Let us begin by importing the CSV file containing birth weight data, and applying the `clean_names` function. The following variables were converted from numeric to factor variables to reflect the information in the codebook: `babysex`, `frace`, `malform`, and `mrace`. The `fincome` variable, denoting family monthly income, was also modified to reflect the actual reported amounts (i.e., hundreds). Finally, the `skim` function was applied to generate a summary of the variables in the data set. 
+Let us begin by importing the CSV file containing birth weight data, and applying the `clean_names` function. The following variables were converted from numeric to factor variables to reflect the information in the codebook: `babysex`, `frace`, `malform`, and `mrace`. Labels were applied to these newly converted factor variables to improve readability of these data. Please note that although the provided codebook indicated that the `frace` and `mrace` variables had 6 and 5 possible values, respectively, the actual data set only contained 5 and 4 possible values for each variable respectively. More specifically, `frace` did not have any entries with 9 = Unknown, and `mrace` did not have any entries with 8 = Other. As such, these labels were omitted in the labeling process. The `fincome` variable, denoting family monthly income, was also modified to reflect the actual reported amounts (i.e., hundreds). Finally, the `skim` function was applied to generate a summary of the variables in the data set. 
 
 ```{r}
 birthweight_data = 
@@ -125,5 +125,33 @@ Based on the results from applying the `skim` function, there are no missing val
 
 ## 3.2 Birth Weight Data Analysis: Modeling Exercise
 
+#### _Hypothesizing a Regression Model for Birth Weight_
 
+According to the CDC, about 20% of babies born to mothers who smoke during their pregnancy are born with low birth weight (2020). Furthermore, existing literature has found increased maternal age to be a risk factor for low birth weight (Zheng et al., 2016). As such, we hypothesize that birth weight has an inverse linear relationship with the average number of cigarettes smoked per day during pregnancy (variable `smoken`) and maternal age (variable `momage`). Below, we fit this hypothesized model, and depict a plot of model residuals against fitted values using `add_residuals` and `add_predictions`. 
+
+```{r}
+birthweight_fit = lm(bwt ~ momage + smoken, data = birthweight_data)
+
+birthweight_data_df = birthweight_data %>% 
+  mutate(modelr::add_residuals(birthweight_data, birthweight_fit), 
+         modelr::add_predictions(birthweight_data, birthweight_fit))
+
+birthweight_data_df %>% 
+  ggplot(aes(x = pred, y = resid)) +
+  geom_point()
+
+birthweight_fit %>% 
+  broom::tidy() %>% 
+  knitr::kable(col.names = c('Term', 'Estimate', 'Standard Error', 'Statistic', 'p-value'), digits = 3)
+```
+
+#### _Comparing Regression Models_
+
+
+
+## References
+
+CDC. (2020, April 28). Smoking during pregnancy. Centers for Disease Control and Prevention. Retrieved December 1, 2022, from https://www.cdc.gov/tobacco/basic_information/health_effects/pregnancy/index.htm#:~:text=Health%20Effects%20of%20Smoking%20and%20Secondhand%20Smoke%20on%20Babies&amp;text=One%20in%20every%20five%20babies,early%20are%20not%20as%20healthy. 
+
+Zheng, W., Suzuki, K., Tanaka, T., Kohama, M., Yamagata, Z., & Okinawa Child Health Study Group (2016). Association between Maternal Smoking during Pregnancy and Low Birthweight: Effects by Maternal Age. PloS one, 11(1), e0146241. https://doi.org/10.1371/journal.pone.0146241
 
